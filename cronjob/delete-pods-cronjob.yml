@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: delete-pods-job
-  namespace: cronjob-iaxis
+  namespace: cronjob
 spec:
   schedule: "30 15 * * *"  # A las 3:00 PM hora de Colombia (8:00 PM UTC)
   timeZone: America/Bogota
@@ -12,7 +12,7 @@ spec:
         spec:
           containers:
             - name: delete-pods
-              image: criaxissit.azurecr.io/imagen-kubectl-alpine:latest
+              image: registry.azurecr.io/imagen-kubectl-alpine:latest
               env: 
                 - name: TZ
                   value: America/Bogota
