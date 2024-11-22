@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: delete-pods-job
+  namespace: cronjob-iaxis
+spec:
+  schedule: "30 15 * * *"  # A las 3:00 PM hora de Colombia (8:00 PM UTC)
+  timeZone: America/Bogota
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: delete-pods
+              image: criaxissit.azurecr.io/imagen-kubectl-alpine:latest
+              env: 
+                - name: TZ
+                  value: America/Bogota
+                - name: AZURE_CLIENT_ID
+                  value: ""
+                - name: AZURE_CLIENT_SECRET
+                  value: ""
+                - name: AZURE_TENANT_ID
+                  value: ""
+                - name: AZURE_SUBSCRIPTION_ID
+                  value: ""
+                - name: AZURE_RESOURCE_GROUP
+                  value: ""
+                - name: AZURE_AKS
+                  value: ""
+                - name: NAMESPACE
+                  value: ""
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  # Autenticación en Azure con la cuenta de servicio
+                  az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+
+                  # Obtener las credenciales de AKS para el clúster específico
+                  az aks get-credentials --resource-group $AZURE_RESOURCE_GROUP --name $AZURE_AKS --overwrite-existing
+
+                  # Obtener los nombres de todos los pods en el namespace
+                  PODS=$(kubectl get pods -n $NAMESPACE --no-headers -o custom-columns=":metadata.name")
+
+                  # Verifica si hay pods en el namespace
+                  if [ -z "$PODS" ]; then
+                    echo "No se encontraron pods en el namespace $NAMESPACE."
+                    exit 0
+                  fi
+
+                  # Eliminar cada pod encontrado en el namespace
+                  for POD in $PODS; do
+                    echo "Eliminando pod: $POD en el namespace: $NAMESPACE"
+                    kubectl delete pod $POD -n $NAMESPACE
+                  done
+          restartPolicy: OnFailure
